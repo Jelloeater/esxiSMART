@@ -29,10 +29,10 @@ class Password:
 
 
 def get_smart_status():
-    ip = 'server ip'
+    ip = '192.168.1.150'
     port = 22
     username = 'root'
-    password = 'password'
+    password = Password().get_password()
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
