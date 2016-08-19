@@ -1,5 +1,6 @@
 import argparse
 import getpass
+import json
 import logging
 from keyring.errors import PasswordDeleteError
 import paramiko
@@ -51,7 +52,7 @@ def parse_smart_status_to_JSON(raw_input):
         device_list.append(device.split('\n'))
         # For each item in the list, we will split it into a sub list, then add that sub list to the master list
 
-    print(raw_input)
+    logging.debug(raw_input)
     big_list = []
     for device in device_list:
         device_info = []
@@ -59,8 +60,8 @@ def parse_smart_status_to_JSON(raw_input):
             if line != '':  # Ignores empty lines
                 device_info.append({"Parameter": line[:30].strip(), "Value": line[30:37].strip(),
                                     "Threshold": line[37:48].strip(), "Worst": line[48:].strip()})
-        big_list.append(device_info)
-    logging.debug('stop')
+        big_list.append({'Device': device[0], 'Info': device_info})
+    return json.dumps(big_list, indent=4, sort_keys=True)
 
 
 def main():
@@ -78,7 +79,10 @@ def main():
     if args.clear_password:
         Password().clear_password()
 
-    parse_smart_status_to_JSON(get_smart_status('192.168.1.150'))
+
+    stats = get_smart_status('192.168.1.150')
+    out = parse_smart_status_to_JSON(stats)
+    print(out)
 
 
 if __name__ == "__main__":
