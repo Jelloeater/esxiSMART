@@ -51,15 +51,14 @@ def parse_smart_status_to_JSON(raw_input):
         device_list.append(device.split('\n'))
         # For each item in the list, we will split it into a sub list, then add that sub list to the master list
 
-
     print(raw_input)
     big_list = []
     for device in device_list:
         device_info = []
-        for line in device:
-            if line != '':
+        for line in device[3:]:  # Skips header and separator line
+            if line != '':  # Ignores empty lines
                 device_info.append({"Parameter": line[:30].strip(), "Value": line[30:37].strip(),
-                                        "Threshold": line[37:48].strip(), "Worst": line[48:].strip()})
+                                    "Threshold": line[37:48].strip(), "Worst": line[48:].strip()})
         big_list.append(device_info)
     logging.debug('stop')
 
