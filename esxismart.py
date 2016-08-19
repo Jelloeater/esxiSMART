@@ -28,20 +28,29 @@ class Password:
             logging.error("Password cannot be deleted or already has been removed")
 
 
-def get_smart_status():
-    ip = '192.168.1.150'
+def get_smart_status(host_ip):
     port = 22
-    username = 'root'
+    username = Password.USER_ID
     password = Password().get_password()
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(ip, port, username, password)
+    ssh.connect(host_ip, port, username, password)
 
     stdin, stdout, stderr = ssh.exec_command('./usr/lib/vmware/vm-support/bin/smartinfo.sh')
     outlines = stdout.readlines()
     resp = ''.join(outlines)
-    logging.debug(resp)
+    return resp
+
+
+def parse_smart_status_to_JSON(raw_input):
+    raw_device_list = raw_input.split('Device:  ')
+
+    device_list = []
+    for device in raw_device_list[1:]:
+        device_list.append(device.split('\n'))
+
+    logging.debug('stop')
 
 
 def main():
@@ -58,6 +67,9 @@ def main():
         Password().set_password()
     if args.clear_password:
         Password().clear_password()
+
+    parse_smart_status_to_JSON(get_smart_status('192.168.1.150'))
+
 
 if __name__ == "__main__":
     main()
