@@ -2,6 +2,9 @@ import argparse
 import getpass
 import json
 import logging
+import sys
+
+from flask import Flask
 
 from keyring.errors import PasswordDeleteError
 import paramiko
@@ -77,25 +80,30 @@ def main():
     args = parser.parse_args()
     if args.set_password:
         Password().set_password()
-    if args.clear_password:
+        sys.exit()
+    elif args.clear_password:
         Password().clear_password()
-
-    stats = get_smart_status('192.168.1.150')
-    out = parse_smart_status_to_JSON(stats)
-    print(out)
+        sys.exit()
+    else:
+        start_web_server()
 
 
 def start_web_server():
-    from flask import Flask
+    servers_to_check = ['192.168.1.150']
+
     app = Flask(__name__)
 
     @app.route('/')
-    def hello_world():
-        return 'Hello, World!'
+    def index():
+        return str(servers_to_check)
+
+    @app.route('/<x>')
+    def get_server(x):
+        stats = get_smart_status(x)
+        return parse_smart_status_to_JSON(stats)
 
     app.run()
 
 
 if __name__ == "__main__":
     main()
-    start_web_server()
