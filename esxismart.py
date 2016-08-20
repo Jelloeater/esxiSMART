@@ -102,7 +102,7 @@ def start_web_server():
         stats = get_smart_status(x)
         return parse_smart_status_to_JSON(stats)
 
-    app.run()
+    app.run(host="0.0.0.0", port=80, debug=True)
 
 
 if __name__ == "__main__":
