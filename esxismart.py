@@ -2,6 +2,7 @@ import argparse
 import getpass
 import json
 import logging
+
 from keyring.errors import PasswordDeleteError
 import paramiko
 import keyring
@@ -79,11 +80,22 @@ def main():
     if args.clear_password:
         Password().clear_password()
 
-
     stats = get_smart_status('192.168.1.150')
     out = parse_smart_status_to_JSON(stats)
     print(out)
 
 
+def start_web_server():
+    from flask import Flask
+    app = Flask(__name__)
+
+    @app.route('/')
+    def hello_world():
+        return 'Hello, World!'
+
+    app.run()
+
+
 if __name__ == "__main__":
     main()
+    start_web_server()
