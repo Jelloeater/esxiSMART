@@ -5,7 +5,6 @@ import logging
 import sys
 
 from flask import Flask
-
 from keyring.errors import PasswordDeleteError
 import paramiko
 import keyring
@@ -18,16 +17,20 @@ class Password:
     USER_ID = 'root'
 
     def set_password(self):
+        print("Enter ESXi ip address")
+        ip = getpass.getpass(prompt='>')  # To stop shoulder surfing
         print("Enter ESXi root pass")
         password = getpass.getpass(prompt='>')  # To stop shoulder surfing
-        keyring.set_password(self.KEYRING_APP_ID, self.USER_ID, password)
+        keyring.set_password(str(self.KEYRING_APP_ID + ':' + ip), self.USER_ID, password)
 
-    def get_password(self):
-        return keyring.get_password(self.KEYRING_APP_ID, self.USER_ID)
+    def get_password(self, ip):
+        return keyring.get_password(str(self.KEYRING_APP_ID + ':' + ip), self.USER_ID)
 
     def clear_password(self):
         try:
-            keyring.delete_password(self.KEYRING_APP_ID, self.USER_ID)
+            print("Enter ESXi ip address to clear")
+            ip = getpass.getpass(prompt='>')  # To stop shoulder surfing
+            keyring.delete_password(str(self.KEYRING_APP_ID + ':' + ip), self.USER_ID)
             print("Password removed from Keyring")
         except PasswordDeleteError:
             logging.error("Password cannot be deleted or already has been removed")
@@ -36,11 +39,14 @@ class Password:
 def get_smart_status(host_ip):
     port = 22
     username = Password.USER_ID
-    password = Password().get_password()
+    password = Password().get_password(host_ip)
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host_ip, port, username, password)
+    try:
+        ssh.connect(host_ip, port, username, password)
+    except paramiko.ssh_exception.SSHException:
+        return False
 
     stdin, stdout, stderr = ssh.exec_command('./usr/lib/vmware/vm-support/bin/smartinfo.sh')
     outlines = stdout.readlines()
@@ -48,7 +54,7 @@ def get_smart_status(host_ip):
     return resp
 
 
-def parse_smart_status_to_JSON(raw_input):
+def parse_smart_status_to_list(raw_input):
     raw_device_list = raw_input.split('Device:  ')
 
     device_list = []
@@ -56,7 +62,7 @@ def parse_smart_status_to_JSON(raw_input):
         device_list.append(device.split('\n'))
         # For each item in the list, we will split it into a sub list, then add that sub list to the master list
 
-    logging.debug(raw_input)
+    # logging.debug(raw_input)
     big_list = []
     for device in device_list:
         device_info = []
@@ -65,7 +71,29 @@ def parse_smart_status_to_JSON(raw_input):
                 device_info.append({"Parameter": line[:30].strip(), "Value": line[30:37].strip(),
                                     "Threshold": line[37:48].strip(), "Worst": line[48:].strip()})
         big_list.append({'Device': device[0], 'Info': device_info})
-    return json.dumps(big_list, indent=4, sort_keys=True)
+    return big_list
+
+
+def get_devices_from_server(ip):
+    raw_data = get_smart_status(ip)
+    if raw_data is False:
+        return 'No password / Bad Password for ' + str(ip)
+
+    server_list = parse_smart_status_to_list(raw_data)
+    device_list = []
+    for i in server_list:
+        device_list.append(i['Device'])
+    return json.dumps(device_list, indent=4, sort_keys=True)
+
+
+def get_devices_stats(ip, device_name):
+    raw_dat = get_smart_status(ip)
+    server_list = parse_smart_status_to_list(raw_dat)
+    for i in server_list:
+        print(i['Device'])
+        if i['Device'] == device_name:
+            return json.dumps(i['Info'], indent=4, sort_keys=True)
+        break
 
 
 def main():
@@ -89,18 +117,19 @@ def main():
 
 
 def start_web_server():
-    servers_to_check = ['192.168.1.150']
-
     app = Flask(__name__)
 
     @app.route('/')
     def index():
-        return str(servers_to_check)
+        return str('Enter IP of server to check (ex /127.0.0.1)')
 
     @app.route('/<x>')
     def get_server(x):
-        stats = get_smart_status(x)
-        return parse_smart_status_to_JSON(stats)
+        return get_devices_from_server(x)
+
+    @app.route('/<x>:<y>')
+    def get_device_from_server(x, y):
+        return get_devices_stats(x, y)
 
     app.run(host="0.0.0.0", port=80, debug=True)
 
