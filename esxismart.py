@@ -74,12 +74,15 @@ def parse_smart_status_to_list(raw_input):
     return big_list
 
 
-def get_devices_from_server(ip):
+def get_server_info(ip):
     raw_data = get_smart_status(ip)
     if raw_data is False:
         return 'No password / Bad Password for ' + str(ip)
+    return parse_smart_status_to_list(raw_data)
 
-    server_list = parse_smart_status_to_list(raw_data)
+
+def get_devices_from_server(ip):
+    server_list = get_server_info(ip)
     device_list = []
     for i in server_list:
         device_list.append(i['Device'])
@@ -87,13 +90,26 @@ def get_devices_from_server(ip):
 
 
 def get_devices_stats(ip, device_name):
-    raw_dat = get_smart_status(ip)
-    server_list = parse_smart_status_to_list(raw_dat)
+    server_list = get_server_info(ip)
     for i in server_list:
         print(i['Device'])
         if i['Device'] == device_name:
             return json.dumps(i['Info'], indent=4, sort_keys=True)
         break
+
+
+def get_individual_device_stats(ip, device_name, param):
+    server_list = get_server_info(ip)
+    result = None
+    for i in server_list:
+        print(i['Device'])
+        if i['Device'] == device_name:
+            for x in i['Info']:
+                if x['Parameter'] == param:
+                    result = x['Value']
+                    break
+        break
+    return result
 
 
 def main():
@@ -121,16 +137,21 @@ def start_web_server():
 
     @app.route('/')
     def index():
-        return str('Enter IP of server to check (ex /127.0.0.1)<br>'
-                   'Enter the device you wish to parse (/127.0.0.1:Device_ID)')
+        return str('Enter IP of server to check (ex /ip_of_host)<br>'
+                   'Enter the device you wish to parse (/ip_of_host:Device_ID)<br>'
+                   'Enter the stat you wish to pull (/ip_of_host:Device_ID:Parameter)')
 
     @app.route('/<x>')
-    def get_server(x):
+    def print_server(x):
         return get_devices_from_server(x)
 
     @app.route('/<x>:<y>')
-    def get_device_from_server(x, y):
+    def print_device_from_server(x, y):
         return get_devices_stats(x, y)
+
+    @app.route('/<x>:<y>:<z>')
+    def print_individual_device_stats(x, y, z):
+        return get_individual_device_stats(x, y, z)
 
     app.run(host="0.0.0.0", port=80, debug=True)
 
