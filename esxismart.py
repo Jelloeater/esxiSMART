@@ -121,7 +121,8 @@ def start_web_server():
 
     @app.route('/')
     def index():
-        return str('Enter IP of server to check (ex /127.0.0.1)')
+        return str('Enter IP of server to check (ex /127.0.0.1)<br>'
+                   'Enter the device you wish to parse (/127.0.0.1:Device_ID)')
 
     @app.route('/<x>')
     def get_server(x):
